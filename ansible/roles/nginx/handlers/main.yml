@@ -1,3 +1,4 @@
+---
 - name: Validate Nginx before reload
   ansible.builtin.command: nginx -t
   changed_when: false

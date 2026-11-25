@@ -1,3 +1,4 @@
+---
 - name: Verify deployed configuration
   hosts: vm
   become: true
@@ -20,7 +21,10 @@
       ansible.builtin.assert:
         that:
           - container_info.exists
-          - container_info.container.State.Running | default(false)
+          - container_info.container.State.Running
+          - >-
+            container_info.container.NetworkSettings.Ports[(app_internal_port | string) + "/tcp"]
+            == [{"HostIp": "127.0.0.1", "HostPort": app_host_port | string}]
     - name: Check direct application health
       ansible.builtin.uri:
         url: "http://127.0.0.1:{{ app_host_port }}/health"

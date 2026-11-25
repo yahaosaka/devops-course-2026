@@ -1,25 +1,40 @@
-# Управление учебной VM через Ansible
+# 10. Ansible
 
-Управляющий узел — Linux или Ubuntu в WSL. Управляемый узел — Ubuntu
-Server 24.04 amd64. Укажите реальный Host-only IP в обоих inventory.
-Открытый ключ читается из ~/.ssh/devops_vm.pub управляющего узла.
-Для первой установки укажите в group_vars/all.yml полный SHA
-опубликованного образа ghcr.io/yahaosaka/devops-ci-app.
+Целевой узел — Ubuntu Server 24.04 Noble amd64, управляющий узел — отдельный
+контейнер Ubuntu с Ansible. Используйте каталог ansible в файловой системе
+Linux. Стенд подключается через NAT виртуальной машины QEMU в WSL. С управляющего контейнера SSH
+доступен на host.docker.internal:2223, Nginx — на host.docker.internal:8087.
+На Windows эти порты доступны на 127.0.0.1. Для стенда с Host-only замените
+ansible_host, ansible_port и app_proxy_port в обоих inventory.
+Bootstrap подключается как student. Для prod используются devops и локальный
+ключ ~/.ssh/devops_vm. Ключ хоста сверяется и сохраняется в known_hosts.
+На лабораторной VM зеркала archive.ubuntu.com и security.ubuntu.com
+указаны в ubuntu.sources с HTTPS, поскольку HTTP на этом сетевом маршруте
+превышал время ожидания.
 
-- base устанавливает Docker Engine и системные зависимости.
-- ssh создаёт devops, устанавливает ключ и настраивает SSH и UFW.
-- nginx обслуживает HTTP на порту 80.
-- app запускает контейнер с портом 5000 на loopback VM и проверяет /health.
+Роль base устанавливает Docker и его зависимости. Роль ssh устанавливает
+открытый ключ, настраивает SSH, sudo и UFW. Роль nginx публикует сервис на 80.
+Роль app загружает образ ghcr.io/yahaosaka/devops-ci-app по полному SHA из
+group_vars/all.yml и поднимает порт 5000 только на loopback. Для загрузки
+образа доступ должен быть предоставлен реестром. Проверка готовности — /health.
 
-    cd ansible
-    ansible-galaxy collection install -r requirements.yml
-    ansible-playbook -i inventory/bootstrap.ini site.yml --ask-pass --ask-become-pass
-    ansible-playbook site.yml
-    ansible-playbook verify.yml
+```bash
+cd ansible
+ansible-galaxy collection install -r requirements.yml
+ansible-inventory -i inventory/bootstrap.ini --graph
+ansible-playbook site.yml --syntax-check
+ansible-playbook -i inventory/bootstrap.ini site.yml --ask-pass --ask-become-pass
+ansible-playbook -i inventory/prod.ini site.yml
+ansible-playbook -i inventory/prod.ini verify.yml
+```
 
-Проверки на стенде. Сравните PLAY RECAP при первом и повторном запуске.
-На учебной VM временно укажите неверный upstream в конфигурации Nginx,
-проверьте её и перезагрузите службу. Запустите site.yml и подтвердите восстановление.
-Проверьте отсутствующий тег: pull должен завершиться до замены контейнера.
-Для отрицательного verify.yml остановите учебный контейнер и затем
-восстановите его через site.yml.
+Для bootstrap с уже установленным ключом добавьте ansible_private_key_file
+в bootstrap.ini и уберите --ask-pass. Выполните два prod-прогона. Во втором
+ожидается changed=0. Выполните verify.yml до и после временной остановки
+контейнера; восстановите сервис командой ansible-playbook site.yml.
+
+Для drift измените sites-available/devops-ci-app и остановите контейнер,
+затем запустите site.yml. Проверьте ответ Nginx и changed у задач шаблона и
+контейнера. Для теста отсутствующего тега используйте уникальную 40-значную
+строку hex через -e app_tag=..., проверьте остановку на pull и сохранение
+прежнего контейнера, затем повторите прогон с обычным тегом.

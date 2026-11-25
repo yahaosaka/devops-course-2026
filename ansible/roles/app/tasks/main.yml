@@ -1,3 +1,8 @@
+---
+- name: Validate pinned application tag
+  ansible.builtin.assert:
+    that: app_tag is match('^[0-9a-f]{40}$')
+    fail_msg: Supply the full SHA of an image published by CI.
 - name: Allow devops to inspect Docker
   ansible.builtin.user:
     name: devops

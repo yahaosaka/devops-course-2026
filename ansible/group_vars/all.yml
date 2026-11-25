@@ -1,5 +1,6 @@
+---
 app_image: "ghcr.io/yahaosaka/devops-ci-app"
-app_tag: "0e4cff7ffd1354d221dabfac47250e99795a373e"
+app_tag: "b54a97daff42ebf7a9651ed54fb0fae68a11eefc"
 app_container_name: "devops-ci-app"
 app_host_port: 5000
 app_internal_port: 5000

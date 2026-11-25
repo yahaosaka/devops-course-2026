@@ -1,8 +1,9 @@
+---
 - name: Assert supported VM platform
   ansible.builtin.assert:
     that:
       - ansible_distribution == "Ubuntu"
-      - ansible_distribution_version is version("24.04", "==")
+      - ansible_distribution_release == "noble"
       - ansible_architecture == "x86_64"
     fail_msg: "Требуется Ubuntu Server 24.04 amd64"
 - name: Install base packages and remote module dependencies
@@ -28,6 +29,7 @@
     architectures: [amd64]
     signed_by: https://download.docker.com/linux/ubuntu/gpg
     state: present
+  register: docker_repository
 - name: Install Docker Engine
   ansible.builtin.apt:
     name:
@@ -37,7 +39,7 @@
       - docker-buildx-plugin
       - docker-compose-plugin
     state: present
-    update_cache: true
+    update_cache: "{{ docker_repository.changed }}"
 - name: Enable Docker service
   ansible.builtin.service:
     name: docker
